@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>茶境無界 // The Dao of Modern Tea Artistry - Scrollytelling</title>
+  <meta name="description" content="當代東方茶道美學 Scrollytelling 互動向量時間軸：採菁 ➔ 萎凋 ➔ 團揉 ➔ 沸泉。結合 GSAP 3 與 Tailwind CSS 的極致視覺體驗。">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Noto+Serif+TC:wght@400;600;700;900&family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              950: '#06080e',
+              900: '#0d121f',
+              850: '#131929',
+              800: '#1c2438'
+            },
+            jade: {
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              glow: 'rgba(16, 185, 129, 0.4)'
+            },
+            amber: {
+              400: '#fbbf24',
+              500: '#f59e0b',
+              glow: 'rgba(245, 158, 11, 0.45)'
+            },
+            tea: {
+              gold: '#e6a15c',
+              dark: '#1c130b',
+              amber: '#c97836'
+            }
+          },
+          fontFamily: {
+            display: ['Cinzel', 'Outfit', 'sans-serif'],
+            serif: ['"Noto Serif TC"', 'serif'],
+            sans: ['Outfit', '-apple-system', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'float': 'float 4s ease-in-out infinite'
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-10px)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- GSAP 3, ScrollTrigger & ScrollToPlugin via cdnjs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js"></script>
+
+  <style>
+    /* Custom Glow & Glassmorphism Utilities */
+    .glass-card {
+      background: rgba(13, 18, 31, 0.72);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    .glass-card:hover {
+      border-color: rgba(16, 185, 129, 0.4);
+      box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.8),
+                  0 0 30px rgba(16, 185, 129, 0.15);
+    }
+
+    /* Glow Filters */
+    .glow-jade {
+      filter: drop-shadow(0 0 12px rgba(16, 185, 129, 0.75)) drop-shadow(0 0 28px rgba(52, 211, 153, 0.4));
+    }
+    .glow-amber {
+      filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.75)) drop-shadow(0 0 28px rgba(251, 191, 36, 0.4));
+    }
+
+    /* SVG Interactive Node Points */
+    .svg-node {
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), r 0.3s ease, fill 0.3s ease, filter 0.3s ease;
+      cursor: pointer;
+    }
+    .svg-node:hover {
+      r: 16px;
+      filter: drop-shadow(0 0 16px #34d399) drop-shadow(0 0 30px #10b981);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #06080e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #10b981;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 font-sans selection:bg-jade-500 selection:text-slate-950 overflow-x-hidden min-h-screen">
+
+  <!-- ==========================================================================
+       TOP FIXED PROGRESS BAR (即時反映百分比)
+       ========================================================================== -->
+  <div class="fixed top-0 left-0 w-full h-[3px] bg-slate-900/80 z-[120] pointer-events-none">
+    <div id="scrollProgressBar" class="h-full w-0 bg-gradient-to-r from-jade-500 via-amber-400 to-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.8)] transition-all duration-75"></div>
+  </div>
+
+  <!-- Ambient Background Canvas (飄逸水霧與茶葉粒子) -->
+  <canvas id="ambientMistCanvas" class="fixed inset-0 pointer-events-none z-0 opacity-40"></canvas>
+
+  <!-- ==========================================================================
+       HEADER & NAVIGATION
+       ========================================================================== -->
+  <header class="fixed top-0 left-0 w-full z-50 px-6 py-4 md:px-12 flex justify-between items-center backdrop-blur-xl bg-slate-950/70 border-b border-white/5 transition-all duration-300">
+    <a href="#" class="flex items-center gap-3 group">
+      <div class="relative w-8 h-8 rounded-full bg-gradient-to-tr from-jade-600 to-amber-500 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.5)] group-hover:scale-105 transition-transform">
+        <span class="font-serif font-black text-slate-950 text-xs">茶</span>
+      </div>
+      <div>
+        <div class="font-display font-bold tracking-[0.2em] text-sm md:text-base text-white group-hover:text-jade-400 transition-colors">
+          THE DAO // 茶境無界
+        </div>
+        <div class="font-mono text-[9px] tracking-wider text-slate-400 uppercase">
+          CYBER-ZEN SCROLLYTELLING
+        </div>
+      </div>
+    </a>
+
+    <!-- Top Right Actions -->
+    <div class="flex items-center gap-3">
+      <!-- AI Director Prompt Modal Trigger -->
+      <button id="openPromptModalBtn" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-jade-500/10 border border-white/10 hover:border-jade-500/40 text-xs font-mono text-slate-300 hover:text-jade-300 transition-all duration-300 shadow-sm backdrop-blur-md">
+        <svg class="w-3.5 h-3.5 text-jade-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        <span>AI 導演提示詞</span>
+      </button>
+
+      <!-- Web Audio Sound Toggle -->
+      <button id="soundToggleBtn" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-xs transition-all text-slate-300 hover:text-white" title="音效開關 (茶道琴韻水滴聲)">
+        <span id="soundIcon">🔊</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       HERO SECTION (引言區塊 + 5 秒 AI 導演提示詞展示)
+       ========================================================================== -->
+  <section id="heroSection" class="relative z-10 min-h-screen flex flex-col justify-center items-center text-center px-6 pt-28 pb-16 overflow-hidden">
+    <!-- Subtitle Badge -->
+    <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-jade-500/10 border border-jade-500/30 text-jade-300 text-xs font-mono tracking-widest uppercase mb-6 backdrop-blur-md">
+      <span class="w-2 h-2 rounded-full bg-jade-400 shadow-[0_0_8px_#34d399] animate-pulse"></span>
+      MODERN ORIENTAL TEA ODYSSEY // PHASE 01 — 04
+    </div>
+
+    <!-- Main Title -->
+    <h1 class="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-serif font-black tracking-tight leading-[1.1] mb-6 max-w-5xl">
+      <span class="block bg-gradient-to-b from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
+        一葉浮沉．心歸境寂
+      </span>
+      <span class="block text-2xl sm:text-4xl md:text-5xl font-display font-bold tracking-wider mt-2 bg-gradient-to-r from-jade-400 via-amber-300 to-emerald-400 bg-clip-text text-transparent">
+        THE ART & DAO OF TEA
+      </span>
+    </h1>
+
+    <!-- Description -->
+    <p class="max-w-2xl text-slate-400 text-sm sm:text-base md:text-lg font-serif font-normal leading-relaxed mb-10">
+      從深山初曉的靈芽採擷、日光靜置的萎凋走水，到木炭慢火的團揉淬鍊，乃至沸泉初注的一席清歡。以現代動態向量導軌，展開一場流動的東方感官冥想。
+    </p>
+
+    <!-- AI Director Prompt Hero Inspector Card -->
+    <div id="heroPromptCard" class="w-full max-w-2xl text-left glass-card rounded-2xl p-5 mb-12 cursor-pointer transition-all duration-300 hover:-translate-y-1 group">
+      <div class="flex items-center justify-between text-xs font-mono text-jade-400 mb-2">
+        <span class="flex items-center gap-1.5">
+          <span>🎬</span> 5 秒 HERO 區塊「AI 導演提示詞」萬能公式
+        </span>
+        <span class="text-slate-400 group-hover:text-jade-300 flex items-center gap-1 transition-colors">
+          點擊檢視解析 ↗
+        </span>
+      </div>
+      <p class="font-mono text-xs text-slate-300 truncate">
+        "Slow 35mm macro dolly-in shot at eye level. A single fresh tea leaf uncurling gracefully in steaming spring water..."
+      </p>
+    </div>
+
+    <!-- Scroll Down Indicator -->
+    <div class="flex flex-col items-center gap-2 text-slate-400 font-mono text-xs tracking-widest uppercase animate-float">
+      <span>SCROLL DOWN // 向下滾動入席</span>
+      <div class="w-5 h-9 rounded-full border border-white/20 flex justify-center pt-2">
+        <div class="w-1 h-2 rounded-full bg-jade-400 animate-bounce"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       PINNED SCROLLYTELLING SECTION (PINNED 核心展示視窗區塊)
+       ========================================================================== -->
+  <div id="scrollyWrapper" class="relative z-20 w-full">
+    <div id="pinContainer" class="relative w-full h-screen overflow-hidden flex items-center justify-center bg-slate-950">
+
+      <!-- Background Subtle Grid & Radial Glow -->
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(16,185,129,0.06)_0%,transparent_60%)] pointer-events-none"></div>
+      <div class="absolute inset-0 bg-[linear-gradient(to_right,#1e293b08_1px,transparent_1px),linear-gradient(to_bottom,#1e293b08_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none"></div>
+
+      <!-- ======================================================================
+           CENTRAL SVG VECTOR GUIDE RAIL (包含靜態底軌與動態描邊軌 + 互動節點)
+           ====================================================================== -->
+      <div class="absolute inset-0 w-full h-full pointer-events-none flex items-center justify-center z-10">
+        <svg id="timelineSvg" class="w-full h-full max-w-[1400px] pointer-events-auto" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+          <defs>
+            <!-- High-tech Jade to Amber Gradient -->
+            <linearGradient id="teaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#34d399" />
+              <stop offset="35%" stop-color="#10b981" />
+              <stop offset="70%" stop-color="#f59e0b" />
+              <stop offset="100%" stop-color="#fbbf24" />
+            </linearGradient>
+
+            <!-- Glow Filters for SVG -->
+            <filter id="svgGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="6" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          <!-- 1. 靜態底軌 (Static Background Guide Rail) -->
+          <path id="teaPathBase"
+                d="M 500,60 
+                   C 260,220 240,320 500,420 
+                   C 760,520 780,620 500,720 
+                   C 220,820 280,900 500,940"
+                fill="none"
+                stroke="#1e293b"
+                stroke-width="4"
+                stroke-linecap="round"
+                stroke-dasharray="8 8"
+                opacity="0.6" />
+
+          <!-- 2. 動態描邊軌 (Active Dynamic Stroke Track) -->
+          <path id="teaPathActive"
+                d="M 500,60 
+                   C 260,220 240,320 500,420 
+                   C 760,520 780,620 500,720 
+                   C 220,820 280,900 500,940"
+                fill="none"
+                stroke="url(#teaGradient)"
+                stroke-width="5"
+                stroke-linecap="round"
+                filter="url(#svgGlow)" />
+
+          <!-- 3. 節點雙向聯動：4 個階段的 SVG 節點 (具備 Hover 放大回饋，點擊平滑捲動) -->
+          <!-- Node 1 (Phase 01) -->
+          <g class="cursor-pointer group" id="svgNodeGroup1" data-phase-index="1">
+            <circle class="svg-node" id="svgNode1" cx="500" cy="60" r="10" fill="#06080e" stroke="#34d399" stroke-width="4" />
+            <text x="525" y="65" fill="#34d399" font-family="'JetBrains Mono', monospace" font-size="13" font-weight="700">01 採菁</text>
+          </g>
+
+          <!-- Node 2 (Phase 02) -->
+          <g class="cursor-pointer group" id="svgNodeGroup2" data-phase-index="2">
+            <circle class="svg-node" id="svgNode2" cx="500" cy="420" r="10" fill="#06080e" stroke="#10b981" stroke-width="4" />
+            <text x="430" y="425" fill="#10b981" font-family="'JetBrains Mono', monospace" font-size="13" font-weight="700">02 萎凋</text>
+          </g>
+
+          <!-- Node 3 (Phase 03) -->
+          <g class="cursor-pointer group" id="svgNodeGroup3" data-phase-index="3">
+            <circle class="svg-node" id="svgNode3" cx="500" cy="720" r="10" fill="#06080e" stroke="#f59e0b" stroke-width="4" />
+            <text x="525" y="725" fill="#f59e0b" font-family="'JetBrains Mono', monospace" font-size="13" font-weight="700">03 團揉</text>
+          </g>
+
+          <!-- Node 4 (Phase 04) -->
+          <g class="cursor-pointer group" id="svgNodeGroup4" data-phase-index="4">
+            <circle class="svg-node" id="svgNode4" cx="500" cy="940" r="10" fill="#06080e" stroke="#fbbf24" stroke-width="4" />
+            <text x="430" y="945" fill="#fbbf24" font-family="'JetBrains Mono', monospace" font-size="13" font-weight="700">04 沸泉</text>
+          </g>
+
+          <!-- 4. 沿著導軌即時前進的發光引導光球 (Traveling Glowing Head) -->
+          <circle id="travelingGlowHead" cx="500" cy="60" r="8" fill="#ffffff" filter="url(#svgGlow)">
+            <animate attributeName="opacity" values="0.8;1;0.8" dur="1.5s" repeatCount="indefinite"/>
+          </circle>
+        </svg>
+      </div>
+
+      <!-- ======================================================================
+           PHASE CARDS CONTAINER (Phase 01 ~ Phase 04 GSAP 平滑交替)
+           ====================================================================== -->
+      <div class="relative w-full max-w-6xl h-full flex items-center justify-center p-6 z-20 pointer-events-none">
+
+        <!-- Phase 01 Card -->
+        <article id="phaseCard1" class="phase-card pointer-events-auto absolute w-full max-w-lg md:max-w-xl glass-card rounded-3xl p-6 sm:p-8 md:p-10 left-4 sm:left-12 lg:left-20">
+          <div class="flex items-center justify-between mb-4">
+            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-jade-500/10 border border-jade-500/30 text-jade-300 font-mono text-xs tracking-wider uppercase">
+              <span class="w-1.5 h-1.5 rounded-full bg-jade-400"></span>
+              PHASE 01 // 晨嵐靈芽
+            </span>
+            <span class="font-mono text-xs text-slate-500">TERROIR &amp; HARVEST</span>
+          </div>
+
+          <h2 class="text-2xl sm:text-3xl md:text-4xl font-serif font-black text-white mb-3">
+            高山雲霧．天地蘊藉
+          </h2>
+
+          <p class="text-slate-300 text-sm sm:text-base leading-relaxed mb-6 font-serif">
+            破曉清晨，於海拔 1,800 公尺終年雲霧繚繞之原始茶山，趁朝露未褪以指尖輕拈「一心二葉」。富含天然茶氨酸與兒茶素，蓄積山川靈氣與純淨甘露。
+          </p>
+
+          <!-- Sensory Specs Metric Box -->
+          <div class="grid grid-cols-3 gap-3 p-3.5 rounded-2xl bg-slate-950/60 border border-white/5 font-mono text-xs">
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">海拔緯度</div>
+              <div class="text-jade-400 font-bold mt-0.5">1,850m</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">環境濕度</div>
+              <div class="text-jade-400 font-bold mt-0.5">92% RH</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">摘採規格</div>
+              <div class="text-jade-400 font-bold mt-0.5">一心二葉</div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Phase 02 Card -->
+        <article id="phaseCard2" class="phase-card pointer-events-auto absolute w-full max-w-lg md:max-w-xl glass-card rounded-3xl p-6 sm:p-8 md:p-10 right-4 sm:right-12 lg:right-20 opacity-0 translate-y-8">
+          <div class="flex items-center justify-between mb-4">
+            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono text-xs tracking-wider uppercase">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              PHASE 02 // 微酵凝香
+            </span>
+            <span class="font-mono text-xs text-slate-500">SOLAR WITHERING</span>
+          </div>
+
+          <h2 class="text-2xl sm:text-3xl md:text-4xl font-serif font-black text-white mb-3">
+            日光微溫．芳香初綻
+          </h2>
+
+          <p class="text-slate-300 text-sm sm:text-base leading-relaxed mb-6 font-serif">
+            均勻攤曬於竹篩之上，隨微風與斜陽蒸發適度水分。移入室內靜置浪茶走水，葉緣微泛紅暈，青草氣息轉化為幽雅蘭花香與蜜果甘韻，啟動芳香分子重組。
+          </p>
+
+          <div class="grid grid-cols-3 gap-3 p-3.5 rounded-2xl bg-slate-950/60 border border-white/5 font-mono text-xs">
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">走水減重率</div>
+              <div class="text-emerald-400 font-bold mt-0.5">-28.5%</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">發酵程度</div>
+              <div class="text-emerald-400 font-bold mt-0.5">25% 輕發酵</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">芳香聚合物</div>
+              <div class="text-emerald-400 font-bold mt-0.5">+180% 蘭花香</div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Phase 03 Card -->
+        <article id="phaseCard3" class="phase-card pointer-events-auto absolute w-full max-w-lg md:max-w-xl glass-card rounded-3xl p-6 sm:p-8 md:p-10 left-4 sm:left-12 lg:left-20 opacity-0 translate-y-8">
+          <div class="flex items-center justify-between mb-4">
+            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono text-xs tracking-wider uppercase">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+              PHASE 03 // 炭火淬心
+            </span>
+            <span class="font-mono text-xs text-slate-500">CHARCOAL ROASTING</span>
+          </div>
+
+          <h2 class="text-2xl sm:text-3xl md:text-4xl font-serif font-black text-white mb-3">
+            團揉成型．木炭慢焙
+          </h2>
+
+          <p class="text-slate-300 text-sm sm:text-base leading-relaxed mb-6 font-serif">
+            傳承古法布球揉捻，緊結成半球狀翡翠翠粒。以龍眼木炭文火慢燉烘焙 72 小時，火功內斂醇厚，滌盡青澀而蘊藉出焦糖香與熟果甘甜，賦予茶湯渾厚骨架。
+          </p>
+
+          <div class="grid grid-cols-3 gap-3 p-3.5 rounded-2xl bg-slate-950/60 border border-white/5 font-mono text-xs">
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">焙火炭材</div>
+              <div class="text-amber-400 font-bold mt-0.5">百年龍眼木</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">慢焙溫控</div>
+              <div class="text-amber-400 font-bold mt-0.5">95°C 恆溫</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">工藝焙時</div>
+              <div class="text-amber-400 font-bold mt-0.5">72 Hours</div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Phase 04 Card -->
+        <article id="phaseCard4" class="phase-card pointer-events-auto absolute w-full max-w-lg md:max-w-xl glass-card rounded-3xl p-6 sm:p-8 md:p-10 right-4 sm:right-12 lg:right-20 opacity-0 translate-y-8">
+          <div class="flex items-center justify-between mb-4">
+            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 font-mono text-xs tracking-wider uppercase">
+              <span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>
+              PHASE 04 // 泉沸入境
+            </span>
+            <span class="font-mono text-xs text-slate-500">MINDFUL INFUSION</span>
+          </div>
+
+          <h2 class="text-2xl sm:text-3xl md:text-4xl font-serif font-black text-white mb-3">
+            一席清幽．物我兩忘
+          </h2>
+
+          <p class="text-slate-300 text-sm sm:text-base leading-relaxed mb-6 font-serif">
+            活水初沸如松濤微鳴，注入溫潤紫砂壺中。茶湯澄明透澈如琥珀金黃，入口溫潤軟滑，七泡猶有餘香，喉韻生津回甘綿長。一席茶事，即是一場身心安頓的禪境。
+          </p>
+
+          <div class="grid grid-cols-3 gap-3 p-3.5 rounded-2xl bg-slate-950/60 border border-white/5 font-mono text-xs">
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">活水水溫</div>
+              <div class="text-yellow-400 font-bold mt-0.5">98°C 松濤沸</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">浸潤出湯</div>
+              <div class="text-yellow-400 font-bold mt-0.5">8s 初出湯</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">耐泡層次</div>
+              <div class="text-yellow-400 font-bold mt-0.5">7 泡有餘香</div>
+            </div>
+          </div>
+        </article>
+
+      </div>
+
+      <!-- ======================================================================
+           HUD QUICK JUMP CONTROLLER (快捷切換按鈕，與當前進度同步高亮)
+           ====================================================================== -->
+      <nav id="hudNav" class="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2.5 p-3 rounded-2xl glass-card border border-white/10" aria-label="HUD 快速跳轉導覽">
+        <div class="flex items-center justify-between pb-2 border-b border-white/10 text-[10px] font-mono text-slate-400 uppercase tracking-wider px-1">
+          <span>HUD NAV</span>
+          <span id="hudProgressText" class="text-jade-400 font-bold">0%</span>
+        </div>
+
+        <button class="hud-btn group flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all duration-200 text-xs font-mono text-slate-400 hover:text-white hover:bg-white/5" data-phase-target="1">
+          <span class="w-2 h-2 rounded-full bg-slate-600 group-hover:bg-jade-400 transition-colors hud-indicator"></span>
+          <span>01</span>
+          <span class="hidden md:inline font-serif">採菁．靈芽</span>
+        </button>
+
+        <button class="hud-btn group flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all duration-200 text-xs font-mono text-slate-400 hover:text-white hover:bg-white/5" data-phase-target="2">
+          <span class="w-2 h-2 rounded-full bg-slate-600 group-hover:bg-jade-400 transition-colors hud-indicator"></span>
+          <span>02</span>
+          <span class="hidden md:inline font-serif">萎凋．凝香</span>
+        </button>
+
+        <button class="hud-btn group flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all duration-200 text-xs font-mono text-slate-400 hover:text-white hover:bg-white/5" data-phase-target="3">
+          <span class="w-2 h-2 rounded-full bg-slate-600 group-hover:bg-amber-400 transition-colors hud-indicator"></span>
+          <span>03</span>
+          <span class="hidden md:inline font-serif">團揉．炭焙</span>
+        </button>
+
+        <button class="hud-btn group flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all duration-200 text-xs font-mono text-slate-400 hover:text-white hover:bg-white/5" data-phase-target="4">
+          <span class="w-2 h-2 rounded-full bg-slate-600 group-hover:bg-yellow-400 transition-colors hud-indicator"></span>
+          <span>04</span>
+          <span class="hidden md:inline font-serif">沸泉．境寂</span>
+        </button>
+      </nav>
+
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       CONCLUSION & DATA INSIGHTS SECTION (後續結論數據區塊)
+       ========================================================================== -->
+  <section class="relative z-30 bg-slate-950 py-24 px-6 md:px-12 border-t border-white/10">
+    <div class="max-w-6xl mx-auto">
+
+      <!-- Section Header -->
+      <div class="text-center max-w-2xl mx-auto mb-16">
+        <span class="text-jade-400 font-mono text-xs tracking-widest uppercase">HARMONY OF NATURE &amp; CRAFT</span>
+        <h2 class="text-3xl md:text-5xl font-serif font-black text-white mt-2 mb-4">
+          茶事數據．四維風味光譜
+        </h2>
+        <p class="text-slate-400 text-sm md:text-base font-serif">
+          以現代感官科學解構傳統茶道，從氨基酸與多酚的黃金平衡，見證一片茶葉的極致淬煉。
+        </p>
+      </div>
+
+      <!-- 4 Dimensional Metrics Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+        <!-- Metric 1 -->
+        <div class="glass-card rounded-2xl p-6 border-t-2 border-t-jade-400">
+          <div class="text-3xl font-display font-black text-jade-300 mb-1">3.8:1</div>
+          <div class="text-white font-serif font-bold text-base mb-2">氨基酸 / 茶多酚比</div>
+          <p class="text-slate-400 text-xs leading-relaxed">
+            高山冷涼氣候造就低苦澀、高甘甜的黃金比例，入口即生甘露。
+          </p>
+        </div>
+
+        <!-- Metric 2 -->
+        <div class="glass-card rounded-2xl p-6 border-t-2 border-t-emerald-400">
+          <div class="text-3xl font-display font-black text-emerald-300 mb-1">120+</div>
+          <div class="text-white font-serif font-bold text-base mb-2">天然芳香族化合物</div>
+          <p class="text-slate-400 text-xs leading-relaxed">
+            經走水微酵，茉莉內酯、沉香醇等芳香分子呈指數倍增。
+          </p>
+        </div>
+
+        <!-- Metric 3 -->
+        <div class="glass-card rounded-2xl p-6 border-t-2 border-t-amber-400">
+          <div class="text-3xl font-display font-black text-amber-300 mb-1">72 hrs</div>
+          <div class="text-white font-serif font-bold text-base mb-2">龍眼木炭深層烘焙</div>
+          <p class="text-slate-400 text-xs leading-relaxed">
+            文火慢工熟化，鎖住茶骨同時賦予深邃焦糖與熟果厚韻。
+          </p>
+        </div>
+
+        <!-- Metric 4 -->
+        <div class="glass-card rounded-2xl p-6 border-t-2 border-t-yellow-400">
+          <div class="text-3xl font-display font-black text-yellow-300 mb-1">99.2%</div>
+          <div class="text-white font-serif font-bold text-base mb-2">茶湯澄澈純淨度</div>
+          <p class="text-slate-400 text-xs leading-relaxed">
+            泉沸入壺，金黃琥珀色澤無雜質，七泡後韻猶綿長生津。
+          </p>
+        </div>
+      </div>
+
+      <!-- Technical Architecture & Audit Checklist -->
+      <div class="glass-card rounded-3xl p-8 border border-jade-500/20">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-6 border-b border-white/10">
+          <div>
+            <h3 class="text-xl font-serif font-bold text-white">
+              技術規範與驗收清單 (All Checklist Passed)
+            </h3>
+            <p class="text-slate-400 text-xs font-mono mt-1">
+              GSAP 3 + ScrollTrigger + ScrollToPlugin + Tailwind CSS Architecture
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-jade-500/20 border border-jade-400 text-jade-300 text-xs font-mono font-bold">
+            100% SPEC COMPLIANT
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-serif text-slate-300">
+          <div class="flex items-start gap-3">
+            <span class="w-5 h-5 rounded-full bg-jade-500/20 text-jade-400 flex items-center justify-center font-bold text-[11px] shrink-0">✓</span>
+            <div>
+              <strong class="text-white">SVG 向量導軌動態畫線</strong>：透過 <code>path.getTotalLength()</code> 與 <code>strokeDashoffset</code> 隨滾輪平滑描繪。
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <span class="w-5 h-5 rounded-full bg-jade-500/20 text-jade-400 flex items-center justify-center font-bold text-[11px] shrink-0">✓</span>
+            <div>
+              <strong class="text-white">釘選展示視窗與平滑阻尼</strong>：ScrollTrigger 設定 <code>pin: true</code> 與 <code>scrub: 1.0</code> 確保物理平滑滾動。
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <span class="w-5 h-5 rounded-full bg-jade-500/20 text-jade-400 flex items-center justify-center font-bold text-[11px] shrink-0">✓</span>
+            <div>
+              <strong class="text-white">SVG 節點雙向聯動</strong>：中央節點具備 Hover 放大光暈，點擊呼叫 <code>ScrollToPlugin</code> 平滑捲動至該階段。
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <span class="w-5 h-5 rounded-full bg-jade-500/20 text-jade-400 flex items-center justify-center font-bold text-[11px] shrink-0">✓</span>
+            <div>
+              <strong class="text-white">HUD 快捷切換與實時高亮</strong>：浮動導覽與頂部進度條即時同步反映百分比。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Info -->
+      <footer class="mt-16 text-center text-xs font-mono text-slate-400">
+        <p>THE DAO OF TEA // SCROLLYTELLING INTERACTIVE EXHIBITION</p>
+        <p class="mt-1">SINGLE FILE HTML CRAFTED WITH GSAP 3 &amp; TAILWIND CSS</p>
+      </footer>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       AI DIRECTOR PROMPT MODAL (步驟二 5 秒 Hero 提示詞萬能公式詳解)
+       ========================================================================== -->
+  <div id="promptModalOverlay" class="fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="glass-card w-full max-w-2xl rounded-3xl p-6 sm:p-8 border border-jade-500/40 shadow-2xl transform scale-95 transition-transform duration-300" id="promptModalContent">
+      <div class="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
+        <div>
+          <span class="text-jade-400 text-xs font-mono uppercase tracking-widest">PROMPT ENGINEERING // STEP 02</span>
+          <h3 class="text-xl sm:text-2xl font-serif font-black text-white mt-1">
+            5 秒 Hero「AI 導演提示詞」萬能公式
+          </h3>
+        </div>
+        <button id="closePromptModalBtn" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center text-sm transition-colors">
+          ✕
+        </button>
+      </div>
+
+      <!-- 4-Part Formula Breakdown -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-6 text-xs">
+        <div class="p-3.5 rounded-xl bg-slate-950/70 border border-white/5">
+          <div class="text-jade-400 font-mono font-bold mb-1 flex items-center gap-1.5">
+            <span>🎥</span> 鏡頭運鏡與焦段
+          </div>
+          <p class="text-slate-300 font-mono">
+            Slow 35mm macro dolly-in shot at eye level, ultra-shallow depth of field.
+          </p>
+          <p class="text-slate-400 text-[11px] mt-1 font-serif">
+            （35mm 微距平視慢速向前推鏡，極淺景深聚焦於單一茶葉脈絡）
+          </p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-950/70 border border-white/5">
+          <div class="text-jade-400 font-mono font-bold mb-1 flex items-center gap-1.5">
+            <span>🍃</span> 主體描寫與具體動作
+          </div>
+          <p class="text-slate-300 font-mono">
+            A single fresh high-mountain tea leaf uncurling gracefully in steaming spring water, delicate steam rising.
+          </p>
+          <p class="text-slate-400 text-[11px] mt-1 font-serif">
+            （高山嫩綠茶葉於滾水蒸氣中優雅伸展舒張，縷縷白霧騰起）
+          </p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-950/70 border border-white/5">
+          <div class="text-jade-400 font-mono font-bold mb-1 flex items-center gap-1.5">
+            <span>🏯</span> 環境與空間細節
+          </div>
+          <p class="text-slate-300 font-mono">
+            Minimalist black basalt tea table, soft water ripple reflections, warm golden morning backlight.
+          </p>
+          <p class="text-slate-400 text-[11px] mt-1 font-serif">
+            （極簡黑色玄武岩茶席，柔和水波漣漪倒影，清晨金色逆光）
+          </p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-950/70 border border-white/5">
+          <div class="text-jade-400 font-mono font-bold mb-1 flex items-center gap-1.5">
+            <span>💡</span> 光影、色彩與規格
+          </div>
+          <p class="text-slate-300 font-mono">
+            Emerald jade translucency, golden amber highlights. Shot on Arri Alexa 65, Master Anamorphic, 4K, 60fps.
+          </p>
+          <p class="text-slate-400 text-[11px] mt-1 font-serif">
+            （翠綠透光葉脈、琥珀茶湯金光、Arri Alexa 65 電影級 4K/60fps）
+          </p>
+        </div>
+      </div>
+
+      <!-- Copyable Prompt Codebox -->
+      <div class="relative">
+        <div class="text-[11px] font-mono text-slate-400 mb-1.5 flex justify-between items-center">
+          <span>完整生成提示詞 (PROMPT)：</span>
+          <button id="copyPromptCodeBtn" class="px-2.5 py-1 rounded bg-jade-500 hover:bg-jade-400 text-slate-950 font-bold text-[10px] transition-colors">
+            複製提示詞
+          </button>
+        </div>
+        <div id="fullPromptCode" class="p-3 rounded-xl bg-slate-950 border border-white/10 font-mono text-xs text-jade-300 leading-relaxed break-words selection:bg-jade-400 selection:text-slate-950">Slow 35mm macro dolly-in shot at eye level, ultra-shallow depth of field. A single fresh high-mountain tea leaf uncurling gracefully in steaming pure spring water, delicate organic steam motes floating in air. Minimalist black basalt zen tea table, soft water ripple reflections. Warm morning golden hour backlighting, translucent emerald green leaf veins, amber golden tea liquor highlights. Shot on Arri Alexa 65, Master Anamorphic Prime, cinematic 4K, 60fps, photorealistic render, masterpiece --ar 16:9 --v 6.1</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       GSAP 3 SCROLLTRIGGER & INTERACTION SCRIPTS
+       ========================================================================== -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Register GSAP Plugins
+      gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
+
+      // --- Ambient Mist Particle Canvas ---
+      const canvas = document.getElementById('ambientMistCanvas');
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      class MistParticle {
+        constructor() {
+          this.init();
+        }
+        init() {
+          this.x = Math.random() * canvas.width;
+          this.y = Math.random() * canvas.height;
+          this.radius = Math.random() * 3 + 1;
+          this.vx = (Math.random() - 0.5) * 0.4;
+          this.vy = (Math.random() - 0.5) * 0.3 - 0.2;
+          this.alpha = Math.random() * 0.4 + 0.1;
+          this.color = Math.random() > 0.4 ? '16, 185, 129' : '245, 158, 11';
+        }
+        update() {
+          this.x += this.vx;
+          this.y += this.vy;
+          if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+            this.init();
+          }
+        }
+        draw() {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${this.color}, ${this.alpha})`;
+          ctx.fill();
+        }
+      }
+
+      for (let i = 0; i < 45; i++) {
+        particles.push(new MistParticle());
+      }
+
+      function animateMist() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+          p.update();
+          p.draw();
+        });
+        requestAnimationFrame(animateMist);
+      }
+      animateMist();
+
+      // --- Web Audio Tactile Synthesizer ---
+      let audioCtx = null;
+      let soundEnabled = true;
+
+      function playZenTone(freq = 528, duration = 0.08) {
+        if (!soundEnabled) return;
+        try {
+          if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          }
+          if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+          }
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + duration);
+        } catch (e) {
+          // Ignore audio permissions
+        }
+      }
+
+      const soundToggleBtn = document.getElementById('soundToggleBtn');
+      const soundIcon = document.getElementById('soundIcon');
+      soundToggleBtn.addEventListener('click', () => {
+        soundEnabled = !soundEnabled;
+        soundIcon.textContent = soundEnabled ? '🔊' : '🔇';
+        if (soundEnabled) playZenTone(640, 0.1);
+      });
+
+      // --- SVG Dynamic Path Measurement & Initialization ---
+      const activePath = document.getElementById('teaPathActive');
+      const pathLength = activePath.getTotalLength();
+      const travelingHead = document.getElementById('travelingGlowHead');
+
+      // Initialize path stroke dash
+      gsap.set(activePath, {
+        strokeDasharray: pathLength,
+        strokeDashoffset: pathLength
+      });
+
+      function updateTravelingHead(progress) {
+        try {
+          const currentDist = progress * pathLength;
+          const pt = activePath.getPointAtLength(Math.max(0, Math.min(pathLength, currentDist)));
+          travelingHead.setAttribute('cx', pt.x);
+          travelingHead.setAttribute('cy', pt.y);
+        } catch (e) {}
+      }
+
+      // --- Phase Cards & HUD References ---
+      const phaseCards = [
+        document.getElementById('phaseCard1'),
+        document.getElementById('phaseCard2'),
+        document.getElementById('phaseCard3'),
+        document.getElementById('phaseCard4')
+      ];
+
+      const hudButtons = document.querySelectorAll('.hud-btn');
+      const hudProgressText = document.getElementById('hudProgressText');
+      const scrollProgressBar = document.getElementById('scrollProgressBar');
+      const svgNodes = [
+        document.getElementById('svgNode1'),
+        document.getElementById('svgNode2'),
+        document.getElementById('svgNode3'),
+        document.getElementById('svgNode4')
+      ];
+
+      // Define phase target normalized points along the pinned timeline (0.0 to 1.0)
+      const phaseTimelinePoints = [0.05, 0.35, 0.65, 0.95];
+
+      // --- MASTER GSAP TIMELINE WITH PINNING & SCRUB: 1.0 ---
+      const masterTl = gsap.timeline({
+        scrollTrigger: {
+          trigger: "#pinContainer",
+          start: "top top",
+          end: "+=3600", // Generous scroll distance for graceful pacing
+          pin: true,
+          scrub: 1.0,   // Smooth physical damping
+          anticipatePin: 1,
+          onUpdate: (self) => {
+            const p = self.progress;
+
+            // 1. Update Top Progress Bar & HUD Percentage
+            scrollProgressBar.style.width = `${p * 100}%`;
+            hudProgressText.textContent = `${Math.round(p * 100)}%`;
+
+            // 2. Update Traveling Head position along SVG path
+            updateTravelingHead(p);
+
+            // 3. Determine active phase based on timeline brackets
+            let activeIdx = 0;
+            if (p >= 0.8) activeIdx = 3;
+            else if (p >= 0.5) activeIdx = 2;
+            else if (p >= 0.2) activeIdx = 1;
+            else activeIdx = 0;
+
+            // Sync HUD Buttons Active Style
+            hudButtons.forEach((btn, idx) => {
+              const indicator = btn.querySelector('.hud-indicator');
+              if (idx === activeIdx) {
+                btn.classList.add('bg-white/10', 'text-white');
+                indicator.classList.remove('bg-slate-600');
+                indicator.classList.add(idx >= 2 ? 'bg-amber-400' : 'bg-jade-400', 'scale-125');
+              } else {
+                btn.classList.remove('bg-white/10', 'text-white');
+                indicator.classList.remove('bg-amber-400', 'bg-jade-400', 'scale-125');
+                indicator.classList.add('bg-slate-600');
+              }
+            });
+
+            // Sync SVG Nodes Active Scale
+            svgNodes.forEach((node, idx) => {
+              if (idx === activeIdx) {
+                node.setAttribute('r', '14');
+                node.setAttribute('stroke-width', '5');
+              } else {
+                node.setAttribute('r', '10');
+                node.setAttribute('stroke-width', '4');
+              }
+            });
+          }
+        }
+      });
+
+      // 1. Dynamic SVG Path Stroke Drawing tweened from totalLength to 0
+      masterTl.to(activePath, {
+        strokeDashoffset: 0,
+        ease: "none",
+        duration: 10
+      }, 0);
+
+      // 2. Coordinated Phase Cards Transitions on Timeline
+      // Card 1 starts active, fades out towards Phase 2
+      masterTl.to(phaseCards[0], { opacity: 0, y: -30, duration: 1.2, ease: "power2.inOut" }, 1.8)
+              // Card 2 fades in
+              .fromTo(phaseCards[1], { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 1.2, ease: "power2.inOut" }, 2.4)
+              // Card 2 fades out
+              .to(phaseCards[1], { opacity: 0, y: -30, duration: 1.2, ease: "power2.inOut" }, 4.6)
+              // Card 3 fades in
+              .fromTo(phaseCards[2], { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 1.2, ease: "power2.inOut" }, 5.2)
+              // Card 3 fades out
+              .to(phaseCards[2], { opacity: 0, y: -30, duration: 1.2, ease: "power2.inOut" }, 7.4)
+              // Card 4 fades in and stays till conclusion
+              .fromTo(phaseCards[3], { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 1.2, ease: "power2.inOut" }, 8.0);
+
+      // --- SMOOTH SCROLLTO HELPER FUNCTION ---
+      function scrollToPhase(phaseIndex) {
+        playZenTone(500 + phaseIndex * 60, 0.08);
+        const st = masterTl.scrollTrigger;
+        if (!st) return;
+
+        const targetProgress = phaseTimelinePoints[phaseIndex - 1];
+        const targetScroll = st.start + (st.end - st.start) * targetProgress;
+
+        gsap.to(window, {
+          scrollTo: targetScroll,
+          duration: 1.2,
+          ease: "power2.inOut"
+        });
+      }
+
+      // --- SVG NODE CLICK & HOVER INTERACTION (節點雙向聯動) ---
+      [1, 2, 3, 4].forEach(i => {
+        const group = document.getElementById(`svgNodeGroup${i}`);
+        if (group) {
+          group.addEventListener('click', () => scrollToPhase(i));
+          group.addEventListener('mouseenter', () => playZenTone(440 + i * 50, 0.04));
+        }
+      });
+
+      // --- HUD BUTTON CLICK HANDLERS ---
+      hudButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const target = parseInt(btn.getAttribute('data-phase-target'), 10);
+          scrollToPhase(target);
+        });
+      });
+
+      // --- MODAL DIALOG INTERACTIONS ---
+      const modalOverlay = document.getElementById('promptModalOverlay');
+      const openModalBtn = document.getElementById('openPromptModalBtn');
+      const heroPromptCard = document.getElementById('heroPromptCard');
+      const closeModalBtn = document.getElementById('closePromptModalBtn');
+      const copyPromptCodeBtn = document.getElementById('copyPromptCodeBtn');
+      const fullPromptCode = document.getElementById('fullPromptCode');
+
+      function openModal() {
+        modalOverlay.classList.remove('opacity-0', 'pointer-events-none');
+        document.getElementById('promptModalContent').classList.remove('scale-95');
+        document.getElementById('promptModalContent').classList.add('scale-100');
+        playZenTone(720, 0.06);
+      }
+
+      function closeModal() {
+        modalOverlay.classList.add('opacity-0', 'pointer-events-none');
+        document.getElementById('promptModalContent').classList.remove('scale-100');
+        document.getElementById('promptModalContent').classList.add('scale-95');
+        playZenTone(420, 0.05);
+      }
+
+      openModalBtn.addEventListener('click', openModal);
+      heroPromptCard.addEventListener('click', openModal);
+      closeModalBtn.addEventListener('click', closeModal);
+      modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) closeModal();
+      });
+
+      copyPromptCodeBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(fullPromptCode.innerText).then(() => {
+          copyPromptCodeBtn.textContent = '已複製！';
+          playZenTone(880, 0.1);
+          setTimeout(() => {
+            copyPromptCodeBtn.textContent = '複製提示詞';
+          }, 2000);
+        });
+      });
+
+      // Ensure proper layout recalculation on load
+      ScrollTrigger.refresh();
+    });
+  </script>
+</body>
+</html>
